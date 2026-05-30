@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Dashboard — ส่วนตัว</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0f0f11;
+  --bg2: #18181c;
+  --bg3: #222228;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8e8ec;
+  --text2: #888896;
+  --text3: #55555f;
+  --accent: #4ade80;
+  --accent2: #22d3ee;
+  --red: #f87171;
+  --amber: #fbbf24;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --teal: #2dd4bf;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6}
+a{color:var(--accent2)}
+
+/* PASSWORD SCREEN */
+#lock-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px}
+.lock-box{background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:40px;width:320px;text-align:center}
+.lock-icon{font-size:36px;margin-bottom:12px}
+.lock-title{font-size:18px;font-weight:500;margin-bottom:6px}
+.lock-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+.lock-input{width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:15px;font-family:'Sarabun',sans-serif;text-align:center;letter-spacing:4px;outline:none}
+.lock-input:focus{border-color:var(--accent2)}
+.lock-btn{width:100%;margin-top:12px;padding:10px;background:var(--accent);border:none;border-radius:var(--radius-sm);color:#0f0f11;font-weight:600;font-size:15px;font-family:'Sarabun',sans-serif;cursor:pointer;transition:opacity .15s}
+.lock-btn:hover{opacity:.85}
+.lock-err{color:var(--red);font-size:13px;margin-top:8px;min-height:20px}
+
+/* LAYOUT */
+#app{display:none}
+.topbar{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-title{font-size:15px;font-weight:500;letter-spacing:.02em}
+.topbar-date{font-size:12px;color:var(--text2);font-family:'IBM Plex Mono',monospace}
+.logout-btn{font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px}
+.logout-btn:hover{color:var(--text2)}
+
+.tabs{display:flex;gap:2px;padding:20px 28px 0;border-bottom:0.5px solid var(--border)}
+.tab{padding:10px 20px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Sarabun',sans-serif;transition:color .15s}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--text)}
+
+.main{padding:28px;max-width:1100px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:24px}
+.kpi{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.kpi-label{font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.kpi-val{font-size:22px;font-weight:500;font-family:'IBM Plex Mono',monospace}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.green{color:var(--accent)}.red{color:var(--red)}.blue{color:var(--blue)}.amber{color:var(--amber)}
+
+.section-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin:24px 0 12px}
+
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:14px}
+
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;color:var(--text3);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;border-bottom:0.5px solid var(--border)}
+.tbl td{padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text)}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--bg3)}
+.tbl .num{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px}
+.tbl .total-row td{font-weight:500;color:var(--accent);background:rgba(74,222,128,.05);border-top:0.5px solid var(--border2)}
+.tbl .group-hdr td{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding-top:14px;background:none;border-bottom:none}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+.chart-wrap{position:relative;width:100%;margin-bottom:20px}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-family:'IBM Plex Mono',monospace}
+.b-green{background:rgba(74,222,128,.12);color:var(--accent)}
+.b-red{background:rgba(248,113,113,.12);color:var(--red)}
+.b-blue{background:rgba(96,165,250,.12);color:var(--blue)}
+.b-amber{background:rgba(251,191,36,.12);color:var(--amber)}
+.b-purple{background:rgba(167,139,250,.12);color:var(--purple)}
+
+.ratio-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.ratio-row:last-child{border-bottom:none}
+.ratio-label{color:var(--text2)}
+
+.month-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.month-bar select,.month-bar input{background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;font-family:'Sarabun',sans-serif;outline:none;cursor:pointer}
+.month-bar select:focus,.month-bar input:focus{border-color:var(--accent2)}
+.month-bar label{font-size:12px;color:var(--text2)}
+
+.alloc-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:5px;margin-bottom:2px}
+.alloc-fill{height:100%;border-radius:4px;transition:width .4s}
+.alloc-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.alloc-row:last-child{border-bottom:none}
+.alloc-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.alloc-name{flex:1;color:var(--text)}
+.alloc-pct{width:36px;text-align:right;color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:12px}
+.alloc-val{width:100px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px}
+
+/* EDIT MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:28px;width:480px;max-height:85vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:20px}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.form-row input,.form-row select{width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:14px;font-family:'Sarabun',monospace;outline:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--accent2)}
+.modal-btns{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.btn{padding:8px 18px;border-radius:var(--radius-sm);border:0.5px solid var(--border2);background:none;color:var(--text2);font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer}
+.btn:hover{background:var(--bg3)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#0f0f11;font-weight:600}
+.btn-primary:hover{opacity:.85}
+.btn-danger{background:rgba(248,113,113,.12);border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- PASSWORD SCREEN -->
+<div id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">Finance Dashboard</div>
+    <div class="lock-sub">กรอกรหัสผ่านเพื่อเข้าใช้งาน</div>
+    <input class="lock-input" type="password" id="pw-input" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="lock-btn" onclick="checkPw()">เข้าสู่ระบบ</button>
+    <div class="lock-err" id="pw-err"></div>
+  </div>
+  <div style="font-size:11px;color:#333;margin-top:12px">เปลี่ยนรหัสผ่านได้ในไฟล์ index.html บรรทัด CHANGE_PASSWORD</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-title">💰 Finance Dashboard</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="topbar-date" id="today-date"></div>
+      <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('bs',this)">งบแสดงฐานะการเงิน</button>
+    <button class="tab" onclick="showPage('budget',this)">งบรายรับ-รายจ่าย</button>
+    <button class="tab" onclick="showPage('alloc',this)">Asset Allocation</button>
+  </div>
+
+  <div class="main">
+
+    <!-- PAGE: BALANCE SHEET -->
+    <div id="page-bs" class="page active">
+      <div class="month-bar">
+        <label>ณ วันที่</label>
+        <select id="bs-period" onchange="renderBS()">
+          <option value="0">30/6/2569</option>
+        </select>
+        <button class="btn" onclick="openBSModal()">+ เพิ่มข้อมูลใหม่</button>
+      </div>
+      <div class="kpi-row" id="bs-kpi"></div>
+      <div class="chart-wrap" style="height:180px"><canvas id="bsChart" role="img" aria-label="สัดส่วนทรัพย์สิน 3 ประเภท">ทรัพย์สินสภาพคล่อง ลงทุน ส่วนตัว</canvas></div>
+      <div class="two-col">
+        <div>
+          <div class="section-title">ทรัพย์สิน</div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <table class="tbl" id="asset-tbl"></table>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">หนี้สิน</div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <table class="tbl" id="debt-tbl"></table>
+          </div>
+          <div class="section-title">อัตราส่วนทางการเงิน</div>
+          <div class="card" id="ratio-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: BUDGET -->
+    <div id="page-budget" class="page">
+      <div class="month-bar">
+        <label>ปี</label>
+        <select id="budget-year" onchange="renderBudget()"><option value="2568">2568</option><option value="2569">2569</option></select>
+        <label>เดือน</label>
+        <select id="budget-month" onchange="renderBudget()">
+          <option value="all">ทั้งปี</option>
+          <option value="0">ม.ค.</option><option value="1">ก.พ.</option><option value="2">มี.ค.</option><option value="3">เม.ย.</option>
+          <option value="4">พ.ค.</option><option value="5">มิ.ย.</option><option value="6">ก.ค.</option><option value="7">ส.ค.</option>
+          <option value="8">ก.ย.</option><option value="9">ต.ค.</option><option value="10">พ.ย.</option><option value="11">ธ.ค.</option>
+        </select>
+        <button class="btn" onclick="openBudgetModal()">+ เพิ่มข้อมูลเดือนใหม่</button>
+      </div>
+      <div class="kpi-row" id="budget-kpi"></div>
+      <div class="chart-wrap" style="height:240px"><canvas id="budgetChart" role="img" aria-label="รายรับ รายจ่าย เงินออม รายเดือน">รายรับ รายจ่าย เงินออม</canvas></div>
+      <div class="two-col">
+        <div>
+          <div class="section-title">รายรับ</div>
+          <div class="card" style="padding:0;overflow:hidden"><table class="tbl" id="income-tbl"></table></div>
+          <div class="section-title">เงินออม</div>
+          <div class="card" style="padding:0;overflow:hidden"><table class="tbl" id="saving-tbl"></table></div>
+        </div>
+        <div>
+          <div class="section-title">รายจ่าย</div>
+          <div class="card" style="padding:0;overflow:hidden"><table class="tbl" id="expense-tbl"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ASSET ALLOCATION -->
+    <div id="page-alloc" class="page">
+      <div class="month-bar">
+        <button class="btn" onclick="openAllocModal()">+ เพิ่ม / แก้ไขกองทุน</button>
+      </div>
+      <div class="kpi-row" id="alloc-kpi"></div>
+      <div class="two-col">
+        <div>
+          <div class="chart-wrap" style="height:300px"><canvas id="allocChart" role="img" aria-label="สัดส่วน Asset Allocation">สัดส่วนพอร์ต</canvas></div>
+        </div>
+        <div>
+          <div class="section-title">สัดส่วนตาม Asset Class</div>
+          <div id="alloc-class-list"></div>
+        </div>
+      </div>
+      <div class="section-title">รายละเอียดการลงทุน</div>
+      <div class="card" style="padding:0;overflow:hidden"><table class="tbl" id="alloc-detail-tbl"></table></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-bs">
+  <div class="modal">
+    <h3>เพิ่มข้อมูลงบแสดงฐานะการเงิน</h3>
+    <div class="form-row"><label>วันที่ (เช่น 31/7/2569)</label><input id="bs-new-date" placeholder="31/7/2569"></div>
+    <div class="form-row"><label>เงินฝากรวมสภาพคล่อง (฿)</label><input id="bs-liquid" type="number" placeholder="2316853"></div>
+    <div class="form-row"><label>สินทรัพย์เพื่อการลงทุนรวม (฿)</label><input id="bs-invest" type="number" placeholder="3332711"></div>
+    <div class="form-row"><label>สินทรัพย์ส่วนตัวรวม (฿)</label><input id="bs-personal" type="number" placeholder="2114424"></div>
+    <div class="form-row"><label>หนี้สินรวม (฿)</label><input id="bs-debt" type="number" placeholder="0"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-bs')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveBSData()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-budget">
+  <div class="modal">
+    <h3>เพิ่มข้อมูลรายรับ-รายจ่าย</h3>
+    <div class="form-row"><label>ปี (พ.ศ.)</label><input id="bud-year" type="number" placeholder="2569"></div>
+    <div class="form-row"><label>เดือน (1-12)</label><input id="bud-month" type="number" min="1" max="12" placeholder="7"></div>
+    <div class="form-row"><label>รายรับรวม (฿)</label><input id="bud-income" type="number" placeholder="72400"></div>
+    <div class="form-row"><label>เงินออมรวม (฿)</label><input id="bud-saving" type="number" placeholder="33305"></div>
+    <div class="form-row"><label>รายจ่ายรวม (฿)</label><input id="bud-expense" type="number" placeholder="875"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-budget')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveBudgetData()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-alloc">
+  <div class="modal">
+    <h3>เพิ่ม / แก้ไขกองทุน</h3>
+    <div class="form-row"><label>Asset Class</label>
+      <select id="al-class">
+        <option>DM Equity</option><option>EM Equity</option><option>Sector</option><option>Bond</option><option>Alternative</option>
+      </select>
+    </div>
+    <div class="form-row"><label>ชื่อกองทุน / หุ้น</label><input id="al-name" placeholder="เช่น KKP GNP RMF-UH"></div>
+    <div class="form-row"><label>ประเภท</label><input id="al-type" placeholder="เช่น หุ้นโลก"></div>
+    <div class="form-row"><label>Platform</label><input id="al-platform" placeholder="เช่น Finnomena"></div>
+    <div class="form-row"><label>มูลค่าปัจจุบัน (฿)</label><input id="al-val" type="number" placeholder="30000"></div>
+    <div class="form-row"><label>Expected Return (%)</label><input id="al-ret" type="number" placeholder="10"></div>
+    <div class="form-row"><label>ปันผล</label>
+      <select id="al-div"><option value="มี">มี</option><option value="ไม่มี">ไม่มี</option></select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-alloc')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveAllocData()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// PASSWORD — เปลี่ยนตรงนี้ได้เลย
+const PASSWORD = "finance2569"; // CHANGE_PASSWORD
+// ============================================================
+
+const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const classColors = {'DM Equity':'#60a5fa','EM Equity':'#4ade80','Sector':'#fbbf24','Bond':'#a78bfa','Alternative':'#f87171'};
+
+function fmt(n){return Math.round(n).toLocaleString('th-TH')}
+
+// --- AUTH ---
+function checkPw(){
+  const v = document.getElementById('pw-input').value;
+  if(v === PASSWORD){
+    sessionStorage.setItem('auth','1');
+    document.getElementById('lock-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  } else {
+    document.getElementById('pw-err').textContent='รหัสผ่านไม่ถูกต้อง';
+    document.getElementById('pw-input').value='';
+  }
+}
+function logout(){
+  sessionStorage.removeItem('auth');
+  location.reload();
+}
+window.onload=()=>{
+  if(sessionStorage.getItem('auth')==='1'){
+    document.getElementById('lock-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  }
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+};
+
+// --- DATA (localStorage) ---
+function loadData(key, def){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):def; }catch(e){ return def; } }
+function saveData(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+const defaultBSPeriods = [
+  {label:'30/6/2569', liquid:2316853, invest:3332711, personal:2114424, debt:0}
+];
+const defaultBudget = {
+  income: [445061,99753,86651,83004,72400,72400,72400,72400,72400,72400,72400,72400],
+  saving: [33105,125494,53305,53305,53305,33305,33305,33305,33305,33305,33305,33305],
+  expense:[55206,100597,42561,26277,875,875,875,875,875,875,875,875]
+};
+const defaultAlloc = [
+  {class:'DM Equity',name:'KKP GNP RMF-UH',type:'หุ้นโลก',platform:'Finnomena',div:'ไม่มี',val:30000,ret:10},
+  {class:'DM Equity',name:'KKP GNP-H-SSF',type:'หุ้นโลก',platform:'Finnomena',div:'ไม่มี',val:20000,ret:10},
+  {class:'DM Equity',name:'KKP GNP-SSF',type:'หุ้นโลก',platform:'Finnomena',div:'ไม่มี',val:20000,ret:10},
+  {class:'DM Equity',name:'KFGGSSF',type:'หุ้นโลก',platform:'Finnomena',div:'มี',val:15000,ret:10},
+  {class:'DM Equity',name:'SCBS&P500',type:'หุ้นสหรัฐ',platform:'Finnomena',div:'มี',val:11000,ret:10},
+  {class:'DM Equity',name:'KKP US500-UH',type:'หุ้นสหรัฐ',platform:'Finnomena',div:'ไม่มี',val:6000,ret:10},
+  {class:'DM Equity',name:'XYLD',type:'S&P500 ETF',platform:'Dime',div:'มี',val:5000,ret:10},
+  {class:'DM Equity',name:'ORCL',type:'หุ้นสหรัฐ',platform:'Dime',div:'มี',val:3100,ret:15},
+  {class:'EM Equity',name:'K-VIETNAM-SSF',type:'หุ้นเวียดนาม',platform:'Finnomena',div:'ไม่มี',val:30000,ret:10},
+  {class:'EM Equity',name:'SCBVIET(SSFA)',type:'หุ้นเวียดนาม',platform:'Finnomena',div:'ไม่มี',val:20000,ret:10},
+  {class:'EM Equity',name:'MEGATX8020U-N',type:'หุ้นไทยESG',platform:'Finnomena',div:'ไม่มี',val:10000,ret:10},
+  {class:'EM Equity',name:'KTEQ70PLUSX-D',type:'หุ้นไทยESG',platform:'Finnomena',div:'มี',val:15000,ret:10},
+  {class:'EM Equity',name:'SCBBTAPX(25D)',type:'หุ้นไทยESG',platform:'Finnomena',div:'มี',val:15000,ret:10},
+  {class:'EM Equity',name:'VAYU1',type:'หุ้นไทย',platform:'BLS',div:'มี',val:20000,ret:10},
+  {class:'Sector',name:'MATECH-D',type:'หุ้นเทคโนโลยีโลก',platform:'Finnomena',div:'มี',val:5000,ret:14},
+  {class:'Sector',name:'B-INNOTECHRMF',type:'หุ้นเทคโนโลยีโลก',platform:'Finnomena',div:'ไม่มี',val:30000,ret:14},
+  {class:'Sector',name:'B-INNOTECHSSF',type:'หุ้นเทคโนโลยีโลก',platform:'Finnomena',div:'ไม่มี',val:45000,ret:14},
+  {class:'Sector',name:'RCL',type:'หุ้นไทย',platform:'BLS',div:'มี',val:13397,ret:15},
+  {class:'Sector',name:'PTTEP',type:'หุ้นไทย',platform:'BLS',div:'มี',val:28247,ret:15},
+  {class:'Sector',name:'SCB',type:'หุ้นไทย',platform:'BLS',div:'มี',val:27246,ret:15},
+  {class:'Bond',name:'K-GDBONDRMF',type:'ตราสารหนี้โลก',platform:'Finnomena',div:'ไม่มี',val:40000,ret:3},
+  {class:'Bond',name:'หุ้นกู้ PTTEP 1/69 5ปี',type:'ตราสารหนี้ไทย',platform:'เป๋าตังค์',div:'มี',val:200000,ret:4.5},
+  {class:'Alternative',name:'ทองคำ',type:'ทองคำ',platform:'เป๋าตังค์',div:'ไม่มี',val:58769,ret:7},
+  {class:'Alternative',name:'BTC',type:'Crypto',platform:'Bitkub',div:'ไม่มี',val:22807,ret:20},
+  {class:'Alternative',name:'ETH',type:'Crypto',platform:'Bitkub',div:'ไม่มี',val:8941,ret:20},
+];
+
+let bsPeriods, budgetData, allocData;
+function initApp(){
+  bsPeriods = loadData('bs_periods', defaultBSPeriods);
+  budgetData = loadData('budget_data', defaultBudget);
+  allocData  = loadData('alloc_data',  defaultAlloc);
+  refreshBSSelect();
+  renderBS();
+}
+
+// --- TABS ---
+function showPage(id, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='budget') renderBudget();
+  if(id==='alloc')  renderAlloc();
+}
+
+// ============================================================
+// BALANCE SHEET
+// ============================================================
+let bsChartObj;
+function refreshBSSelect(){
+  const sel = document.getElementById('bs-period');
+  sel.innerHTML = bsPeriods.map((p,i)=>`<option value="${i}">${p.label}</option>`).join('');
+  sel.value = bsPeriods.length-1;
+}
+function renderBS(){
+  const idx = parseInt(document.getElementById('bs-period').value)||0;
+  const p = bsPeriods[idx];
+  const total = p.liquid + p.invest + p.personal;
+  const netWorth = total - p.debt;
+  const monthlyExp = 19303; // avg monthly expense
+  const reserve = p.liquid / monthlyExp;
+
+  document.getElementById('bs-kpi').innerHTML = `
+    <div class="kpi"><div class="kpi-label">ความมั่งคั่งสุทธิ</div><div class="kpi-val green">฿${fmt(netWorth)}</div><div class="kpi-sub">เป็นบวก ✓</div></div>
+    <div class="kpi"><div class="kpi-label">ทรัพย์สินรวม</div><div class="kpi-val">฿${fmt(total)}</div></div>
+    <div class="kpi"><div class="kpi-label">หนี้สินรวม</div><div class="kpi-val ${p.debt>0?'red':'green'}">฿${fmt(p.debt)}</div></div>
+    <div class="kpi"><div class="kpi-label">อัตราส่วนเงินสำรอง</div><div class="kpi-val">${reserve.toFixed(1)}x</div><div class="kpi-sub ${reserve>=6?'green':'red'}">${reserve>=6?'ผ่านเกณฑ์ ✓':'ควรเพิ่มเงินสำรอง'}</div></div>
+    <div class="kpi"><div class="kpi-label">สภาพคล่อง</div><div class="kpi-val">${Math.round(p.liquid/total*100)}%</div></div>
+    <div class="kpi"><div class="kpi-label">สินทรัพย์ลงทุน</div><div class="kpi-val">${Math.round(p.invest/total*100)}%</div></div>
+  `;
+
+  if(bsChartObj) bsChartObj.destroy();
+  bsChartObj = new Chart(document.getElementById('bsChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:['สินทรัพย์สภาพคล่อง','สินทรัพย์เพื่อการลงทุน','สินทรัพย์ส่วนตัว'],
+      datasets:[{data:[p.liquid,p.invest,p.personal],backgroundColor:['#3b82f640','#22d3ee40','#fbbf2440'],borderColor:['#3b82f6','#22d3ee','#fbbf24'],borderWidth:1,borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{color:'#888896',callback:v=>'฿'+fmt(v)},grid:{color:'rgba(255,255,255,0.05)'}},x:{ticks:{color:'#888896'},grid:{display:false}}}}
+  });
+
+  document.getElementById('asset-tbl').innerHTML = `
+    <thead><tr><th>รายการ</th><th class="num">มูลค่า (฿)</th><th class="num">%</th></tr></thead>
+    <tbody>
+    <tr class="group-hdr"><td colspan="3">สินทรัพย์สภาพคล่อง</td></tr>
+    <tr><td>เงินฝากและเงินออมรวม</td><td class="num">${fmt(p.liquid)}</td><td class="num">${Math.round(p.liquid/total*100)}%</td></tr>
+    <tr class="group-hdr"><td colspan="3">สินทรัพย์เพื่อการลงทุน</td></tr>
+    <tr><td>กองทุน / หุ้น / ประกัน / ทองคำ</td><td class="num">${fmt(p.invest)}</td><td class="num">${Math.round(p.invest/total*100)}%</td></tr>
+    <tr class="group-hdr"><td colspan="3">สินทรัพย์ส่วนตัว</td></tr>
+    <tr><td>บ้าน / คอนโด</td><td class="num">${fmt(p.personal)}</td><td class="num">${Math.round(p.personal/total*100)}%</td></tr>
+    <tr class="total-row"><td>รวมทรัพย์สินทั้งหมด</td><td class="num">฿${fmt(total)}</td><td class="num">100%</td></tr>
+    </tbody>`;
+
+  document.getElementById('debt-tbl').innerHTML = `
+    <thead><tr><th>รายการ</th><th class="num">ยอดหนี้ (฿)</th></tr></thead>
+    <tbody>
+    <tr><td>หนี้สินรวมทั้งหมด</td><td class="num ${p.debt===0?'green':''}">${p.debt===0?'ไม่มีหนี้':'฿'+fmt(p.debt)}</td></tr>
+    <tr class="total-row"><td>ความมั่งคั่งสุทธิ (Net Worth)</td><td class="num green">฿${fmt(netWorth)}</td></tr>
+    </tbody>`;
+
+  const debtRatio = Math.round(p.debt/total*100);
+  document.getElementById('ratio-card').innerHTML = `
+    <div class="ratio-row"><span class="ratio-label">หนี้สินต่อทรัพย์สิน</span><span class="badge ${debtRatio<30?'b-green':'b-red'}">${debtRatio}%</span></div>
+    <div class="ratio-row"><span class="ratio-label">อัตราส่วนเงินสำรอง</span><span class="badge ${reserve>=6?'b-green':'b-amber'}">${reserve.toFixed(1)}x</span></div>
+    <div class="ratio-row"><span class="ratio-label">สภาพคล่องต่อทรัพย์สินรวม</span><span class="badge b-blue">${Math.round(p.liquid/total*100)}%</span></div>
+    <div class="ratio-row"><span class="ratio-label">ความมั่งคั่งสุทธิ</span><span class="badge b-green">฿${fmt(netWorth)}</span></div>
+  `;
+}
+function openBSModal(){ document.getElementById('modal-bs').classList.add('open'); }
+function saveBSData(){
+  const d = {
+    label: document.getElementById('bs-new-date').value||'ใหม่',
+    liquid: parseFloat(document.getElementById('bs-liquid').value)||0,
+    invest: parseFloat(document.getElementById('bs-invest').value)||0,
+    personal: parseFloat(document.getElementById('bs-personal').value)||0,
+    debt: parseFloat(document.getElementById('bs-debt').value)||0,
+  };
+  bsPeriods.push(d);
+  saveData('bs_periods', bsPeriods);
+  refreshBSSelect();
+  renderBS();
+  closeModal('modal-bs');
+}
+
+// ============================================================
+// BUDGET
+// ============================================================
+let budgetChartObj;
+function renderBudget(){
+  const mi = document.getElementById('budget-month').value;
+  const isAll = mi==='all';
+  const inc  = isAll ? budgetData.income  : [budgetData.income[parseInt(mi)]];
+  const sav  = isAll ? budgetData.saving  : [budgetData.saving[parseInt(mi)]];
+  const exp  = isAll ? budgetData.expense : [budgetData.expense[parseInt(mi)]];
+  const labs = isAll ? months : [months[parseInt(mi)]];
+
+  const tInc=inc.reduce((a,b)=>a+b,0), tSav=sav.reduce((a,b)=>a+b,0), tExp=exp.reduce((a,b)=>a+b,0);
+  const cash = isAll
+    ? budgetData.income.map((_,i)=>budgetData.income[i]-budgetData.saving[i]-budgetData.expense[i])
+    : [budgetData.income[parseInt(mi)]-budgetData.saving[parseInt(mi)]-budgetData.expense[parseInt(mi)]];
+  const tCash = cash.reduce((a,b)=>a+b,0);
+
+  document.getElementById('budget-kpi').innerHTML=`
+    <div class="kpi"><div class="kpi-label">รายรับรวม</div><div class="kpi-val">฿${fmt(tInc)}</div></div>
+    <div class="kpi"><div class="kpi-label">เงินออมรวม</div><div class="kpi-val green">฿${fmt(tSav)}</div><div class="kpi-sub">${Math.round(tSav/tInc*100)}% ของรายรับ</div></div>
+    <div class="kpi"><div class="kpi-label">รายจ่ายรวม</div><div class="kpi-val red">฿${fmt(tExp)}</div><div class="kpi-sub">${Math.round(tExp/tInc*100)}% ของรายรับ</div></div>
+    <div class="kpi"><div class="kpi-label">เงินสดคงเหลือ</div><div class="kpi-val ${tCash>=0?'green':'red'}">฿${fmt(tCash)}</div></div>
+  `;
+
+  if(budgetChartObj) budgetChartObj.destroy();
+  budgetChartObj = new Chart(document.getElementById('budgetChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:labs,
+      datasets:[
+        {label:'รายรับ',data:inc,backgroundColor:'#4ade8040',borderColor:'#4ade80',borderWidth:1,borderRadius:3},
+        {label:'เงินออม',data:sav,backgroundColor:'#60a5fa40',borderColor:'#60a5fa',borderWidth:1,borderRadius:3},
+        {label:'รายจ่าย',data:exp,backgroundColor:'#f8717140',borderColor:'#f87171',borderWidth:1,borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#888896',boxWidth:10,boxHeight:10,font:{size:11}}}},
+      scales:{x:{ticks:{color:'#888896',autoSkip:false,maxRotation:45},grid:{color:'rgba(255,255,255,0.04)'}},
+              y:{ticks:{color:'#888896',callback:v=>'฿'+fmt(v)},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+
+  const incRows=[
+    {name:'เงินเดือน/ค่าจ้าง',vals:[64700,64700,64700,64700,64700,64700,64700,64700,64700,64700,64700,64700]},
+    {name:'Commission ประกันชีวิต',vals:[10401,1916,20092,120,0,0,0,0,0,0,0,0]},
+    {name:'Bonus/OT/สวัสดิการ',vals:[357000,0,0,0,0,0,0,0,0,0,0,0]},
+    {name:'รายได้ปล่อยเช่าคอนโด',vals:[7500,15400,7700,7700,7700,7700,7700,7700,7700,7700,0,0]},
+    {name:'ดอกเบี้ย/ปันผล',vals:[31084,723,0,0,0,0,0,0,0,0,0,0]},
+    {name:'รายได้จาก Kept',vals:[1860,2053,1859,2061,0,0,0,0,0,0,0,0]},
+  ];
+  const savRows=[
+    {name:'เงินออมสำรองฉุกเฉิน',vals:[20000,20000,20000,20000,20000,0,0,0,0,0,0,0]},
+    {name:'กองทุนสำรองเลี้ยงชีพ',vals:[9705,9705,9705,9705,9705,9705,9705,9705,9705,9705,9705,9705]},
+    {name:'เงินออมเกษียณสหกรณ์',vals:[3400,3400,3600,3600,3600,3600,3600,3600,3600,3600,3600,3600]},
+    {name:'สหกรณ์ปตท ฝากประจำ',vals:[20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,0]},
+    {name:'ซื้อประกัน',vals:[72389,72389,0,0,0,0,0,0,0,0,0,0]},
+  ];
+  const expRows=[
+    {name:'ภาษี',vals:[16073,17939,0,0,0,0,0,0,0,0,0,0]},
+    {name:'ประกันสังคม',vals:[875,875,875,875,875,875,875,875,875,875,875,875]},
+    {name:'ค่ารถ/ซ่อม',vals:[0,17500,0,0,0,0,0,0,0,0,0,0]},
+    {name:'ค่าส่วนกลางคอนโด',vals:[12000,2071,0,0,0,0,0,0,0,0,0,0]},
+    {name:'ค่าอาหาร',vals:[8655,7988,9971,8390,0,0,0,0,0,0,0,0]},
+    {name:'ค่าเดินทาง',vals:[1879,2035,1536,2188,0,0,0,0,0,0,0,0]},
+    {name:'Shopping',vals:[6427,12273,6988,4615,0,0,0,0,0,0,0,0]},
+    {name:'ค่าสันทนาการ/ท่องเที่ยว',vals:[15949,6000,0,0,0,0,0,0,0,0,0,0]},
+    {name:'ของขวัญ/ทำบุญ',vals:[3059,32439,735,2300,0,0,0,0,0,0,0,0]},
+  ];
+
+  function buildTbl(elId, rows, totals){
+    const total = isAll ? totals.reduce((a,b)=>a+b,0) : totals[parseInt(mi)];
+    let html=`<thead><tr><th>รายการ</th><th class="num">จำนวน (฿)</th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      const v = isAll ? r.vals.reduce((a,b)=>a+b,0) : r.vals[parseInt(mi)];
+      if(v>0) html+=`<tr><td>${r.name}</td><td class="num">${fmt(v)}</td></tr>`;
+    });
+    html+=`<tr class="total-row"><td>รวม</td><td class="num">฿${fmt(total)}</td></tr></tbody>`;
+    document.getElementById(elId).innerHTML=html;
+  }
+  buildTbl('income-tbl', incRows, budgetData.income);
+  buildTbl('saving-tbl', savRows, budgetData.saving);
+  buildTbl('expense-tbl', expRows, budgetData.expense);
+}
+
+function openBudgetModal(){ document.getElementById('modal-budget').classList.add('open'); }
+function saveBudgetData(){
+  const yr = parseInt(document.getElementById('bud-year').value);
+  const mo = parseInt(document.getElementById('bud-month').value)-1;
+  if(isNaN(mo)||mo<0||mo>11){ alert('กรุณากรอกเดือน 1-12'); return; }
+  budgetData.income[mo]  = parseFloat(document.getElementById('bud-income').value)||0;
+  budgetData.saving[mo]  = parseFloat(document.getElementById('bud-saving').value)||0;
+  budgetData.expense[mo] = parseFloat(document.getElementById('bud-expense').value)||0;
+  saveData('budget_data', budgetData);
+  renderBudget();
+  closeModal('modal-budget');
+}
+
+// ============================================================
+// ASSET ALLOCATION
+// ============================================================
+let allocChartObj;
+function renderAlloc(){
+  const classTotals={};
+  let totalPort=0, weightedRet=0;
+  allocData.forEach(r=>{ classTotals[r.class]=(classTotals[r.class]||0)+r.val; totalPort+=r.val; weightedRet+=r.val*r.ret; });
+  const expRet = totalPort>0 ? (weightedRet/totalPort).toFixed(1) : 0;
+
+  document.getElementById('alloc-kpi').innerHTML=`
+    <div class="kpi"><div class="kpi-label">พอร์ตลงทุนรวม</div><div class="kpi-val">฿${fmt(totalPort)}</div></div>
+    <div class="kpi"><div class="kpi-label">Expected Return</div><div class="kpi-val amber">${expRet}%</div></div>
+    <div class="kpi"><div class="kpi-label">จำนวนกองทุน/หุ้น</div><div class="kpi-val">${allocData.length}</div></div>
+    <div class="kpi"><div class="kpi-label">Asset Classes</div><div class="kpi-val">${Object.keys(classTotals).length}</div></div>
+  `;
+
+  const listEl = document.getElementById('alloc-class-list');
+  listEl.innerHTML='';
+  Object.entries(classTotals).forEach(([cls,val])=>{
+    const pct=Math.round(val/totalPort*100);
+    listEl.innerHTML+=`
+      <div class="alloc-row">
+        <div class="alloc-dot" style="background:${classColors[cls]}"></div>
+        <div class="alloc-name">${cls}</div>
+        <div class="alloc-pct">${pct}%</div>
+        <div class="alloc-val">฿${fmt(val)}</div>
+      </div>
+      <div class="alloc-bar"><div class="alloc-fill" style="width:${pct}%;background:${classColors[cls]}40;border:0.5px solid ${classColors[cls]}"></div></div>`;
+  });
+
+  if(allocChartObj) allocChartObj.destroy();
+  allocChartObj = new Chart(document.getElementById('allocChart').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:Object.keys(classTotals),
+      datasets:[{data:Object.values(classTotals),backgroundColor:Object.keys(classTotals).map(c=>classColors[c]+'90'),borderColor:Object.keys(classTotals).map(c=>classColors[c]),borderWidth:1}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#888896',boxWidth:10,boxHeight:10,font:{size:12,family:'Sarabun'}}},
+               tooltip:{callbacks:{label:ctx=>`${ctx.label}: ฿${fmt(ctx.raw)} (${Math.round(ctx.raw/totalPort*100)}%)`}}}}
+  });
+
+  document.getElementById('alloc-detail-tbl').innerHTML=`
+    <thead><tr><th>Class</th><th>ชื่อ</th><th>Platform</th><th>ปันผล</th><th class="num">มูลค่า (฿)</th><th class="num">สัดส่วน</th><th class="num">Ret.</th><th></th></tr></thead>
+    <tbody>`+allocData.map((r,i)=>`
+    <tr>
+      <td><span class="badge" style="background:${classColors[r.class]}20;color:${classColors[r.class]}">${r.class}</span></td>
+      <td>${r.name}</td>
+      <td style="color:#888896">${r.platform}</td>
+      <td style="color:#888896">${r.div}</td>
+      <td class="num">฿${fmt(r.val)}</td>
+      <td class="num">${Math.round(r.val/totalPort*100)}%</td>
+      <td class="num">${r.ret}%</td>
+      <td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteAlloc(${i})">ลบ</button></td>
+    </tr>`).join('')+`</tbody>`;
+}
+
+function openAllocModal(){ document.getElementById('modal-alloc').classList.add('open'); }
+function saveAllocData(){
+  const r = {
+    class:    document.getElementById('al-class').value,
+    name:     document.getElementById('al-name').value||'ไม่ระบุ',
+    type:     document.getElementById('al-type').value||'',
+    platform: document.getElementById('al-platform').value||'',
+    div:      document.getElementById('al-div').value,
+    val:      parseFloat(document.getElementById('al-val').value)||0,
+    ret:      parseFloat(document.getElementById('al-ret').value)||0,
+  };
+  allocData.push(r);
+  saveData('alloc_data', allocData);
+  renderAlloc();
+  closeModal('modal-alloc');
+}
+function deleteAlloc(i){
+  if(!confirm('ลบ '+allocData[i].name+'?')) return;
+  allocData.splice(i,1);
+  saveData('alloc_data', allocData);
+  renderAlloc();
+}
+
+// --- UTILS ---
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',function(e){ if(e.target===this) this.classList.remove('open'); }));
+</script>
+</body>
+</html>
